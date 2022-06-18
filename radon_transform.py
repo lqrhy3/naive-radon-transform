@@ -6,26 +6,27 @@ NDArray = npt.NDArray
 MAX_N_ANGLES = 721
 
 
-def radon(image: NDArray, n_angles: int):
-    assert image.shape[0] == image.shape[1]
-    assert n_angles > 0
-    assert n_angles < MAX_N_ANGLES
+def radon(image: NDArray, rhos: NDArray):
+    assert len(rhos) > 0
+    assert len(rhos) < MAX_N_ANGLES
+
+    n_angles = len(rhos)
 
     if image.ndim > 2:
         image = _bgr_to_grayscale(image)
 
-    padded_image = _resize_and_pad(image)
+    padded_image, pad_width = _resize_and_pad(image)
 
     h, w = padded_image.shape[:2]
     cx, cy = w // 2, h // 2
     sinogram_image = np.zeros((n_angles, h))
 
-    rhos = np.linspace(0, 180, n_angles, endpoint=False)
     for i, rho in enumerate(rhos):
         rotation_matrix = cv2.getRotationMatrix2D((cx, cy), rho, 1.0)
         rotated_image = cv2.warpAffine(padded_image, rotation_matrix, padded_image.shape[:2])
         sinogram_image[i, :] = rotated_image.sum(axis=0)
 
+    # sinogram_image = sinogram_image[:, pad_width:-(pad_width + 1 * (pad_width % 2))]
     return sinogram_image
 
 
@@ -42,7 +43,7 @@ def _resize_and_pad(image: NDArray):
         ]
     )
 
-    return padded_image
+    return padded_image, pad_width
 
 
 def _bgr_to_grayscale(image: NDArray) -> NDArray:
